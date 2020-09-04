@@ -1,0 +1,24 @@
+﻿<x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://dhl.de/webservices/businesscustomershipping/3.0" xmlns:cis="http://dhl.de/webservice/cisbase">
+    <x:Header>
+        <cis:Authentification>
+            <cis:user>2222222222_01</cis:user>
+            <cis:signature>pass</cis:signature>
+        </cis:Authentification>
+    </x:Header>
+    <x:Body>
+        <ns:GetLabelRequest>
+            <ns:Version>
+                <ns:majorRelease>2</ns:majorRelease>
+                <ns:minorRelease>0</ns:minorRelease>
+                <ns:build>0</ns:build>
+            </ns:Version>
+            <cis:shipmentNumber>{{TrackingNumber}}</cis:shipmentNumber>
+            <ns:labelResponseType>URL</ns:labelResponseType>
+            <ns:groupProfileName></ns:groupProfileName>
+            <ns:labelFormat>URL</ns:labelFormat>
+            <ns:labelFormatRetoure></ns:labelFormatRetoure>
+            <ns:combinedPrinting></ns:combinedPrinting>
+            <ns:feederSystem></ns:feederSystem>
+        </ns:GetLabelRequest>
+    </x:Body>
+</x:Envelope>
