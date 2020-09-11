@@ -13,6 +13,6 @@
     "s3-prefix"     : "Rishvi/",
     "template"      : "serverless.template",
     "template-parameters" : "\"ShouldCreateBucket\"=\"true\";\"BucketName\"=\"\"",
-    "s3-bucket"           : "hyperview-dashboard",
-    "stack-name"          : "Hyperview"
+    "s3-bucket"           : "linnworks-shipping-integrations",
+    "stack-name"          : "tuffnells-doodle"
 }

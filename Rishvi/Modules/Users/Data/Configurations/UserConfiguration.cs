@@ -1,15 +1,16 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Rishvi.Modules.Core.Data;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Rishvi.Modules.Linn.Models;
 using Rishvi.Modules.Users.Models;
 
-namespace Rishvi.Modules.Users.Data.Configurations
+namespace Rishvi.Modules.Users.Linn.Configurations
 {
-    public class UserMap : IEntityTypeConfiguration<User>
+    public class UserConfiguration : Rishvi.Modules.Core.Data.IEntityTypeConfiguration<linnUser>
     {
-        public void Map(EntityTypeBuilder<User> builder) 
+        public void Map(EntityTypeBuilder<linnUser> builder)
         {
-            builder.HasKey(x => x.Id);
-            builder.Property(x => x.Name).IsRequired().HasMaxLength(500);
+            builder.Property(t => t.Id)
+                .HasDefaultValueSql("NEWID()");
         }
     }
 }

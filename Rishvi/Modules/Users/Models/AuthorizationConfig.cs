@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Spinx.Web.Modules.Core.Aws;
 using System;
 using System.IO;
 
@@ -26,11 +27,13 @@ namespace Rishvi.Modules.Users.Models
         public string Username = "";
         public string Password = "";
 
+        public string serverPath = string.Empty;
+
         public static AuthorizationConfig Load(string AuthorizationToken)
         {
-            if (System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\Authorization", AuthorizationToken.ToString() + ".json")))
+            if (AwsS3.S3FileIsExists("Files/" + AuthorizationToken + ".json"))
             {
-                string json = System.IO.File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\Authorization", AuthorizationToken.ToString() + ".json"));
+                string json = AwsS3.GetS3File("Files/" + AuthorizationToken + ".json");
                 AuthorizationConfig output = Newtonsoft.Json.JsonConvert.DeserializeObject<AuthorizationConfig>(json);
                 return output;
             }
@@ -42,19 +45,20 @@ namespace Rishvi.Modules.Users.Models
 
         public static void Delete(string AuthorizationToken)
         {
-            if (System.IO.File.Exists(Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\Authorization", AuthorizationToken.ToString() + ".json")))
+            if (AwsS3.S3FileIsExists("Files/" + AuthorizationToken + ".json"))
             {
-                System.IO.File.Delete(Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\Authorization", AuthorizationToken.ToString() + ".json"));
+                AwsS3.DeleteImageToAws("Files/" + AuthorizationToken + ".json");
             }
         }
 
-        public static AuthorizationConfig CreateNew(string email, string LinnworksUniqueIdentifier, string accountName)
+        public static AuthorizationConfig CreateNew(string email, string LinnworksUniqueIdentifier, string accountName, string serverPath)
         {
             AuthorizationConfig output = new AuthorizationConfig();
             output.AuthorizationToken = Guid.NewGuid();
             output.Email = email;
             output.LinnworksUniqueIdentifier = LinnworksUniqueIdentifier;
             output.AccountName = accountName;
+            output.serverPath = serverPath;
             output.Save();
             return output;
         }
@@ -62,19 +66,31 @@ namespace Rishvi.Modules.Users.Models
         public void Save()
         {
             string jsonData = Newtonsoft.Json.JsonConvert.SerializeObject(this);
-            System.IO.StreamWriter sw = new System.IO.StreamWriter(Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\Authorization", this.AuthorizationToken.ToString() + ".json"));
-            sw.Write(jsonData);
-            sw.Close();
+            Stream stream =  GenerateStreamFromString(jsonData);
+            
+            AwsS3.UploadFileToS3(stream, "Files/" +this.AuthorizationToken.ToString() + ".json");
         }
 
         public static void Log(string ordnum, string token, string data, string type)
         {
             string jsonData = data;
-            string path = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\Logs", token + ".json");
-            System.IO.StreamWriter sw = new System.IO.StreamWriter(token +  ".json");
-            sw.Write(jsonData);
-            sw.Close();
+            Stream stream = GenerateStreamFromString(jsonData);
+
+
+            AwsS3.UploadFileToS3(stream, "Logs/" + token + ".json");
         }
+
+        public static Stream GenerateStreamFromString(string s)
+        {
+            var stream = new MemoryStream();
+            System.IO.StreamWriter sw = new System.IO.StreamWriter(stream);
+            sw.Write(s);
+            sw.Flush();
+            stream.Position = 0;
+            return stream;
+        }
+
+        
 
     }
 }

@@ -32,6 +32,12 @@ namespace Rishvi.Modules.Users.Api
             _userService = userService;
         }
 
+        [HttpGet, Route("test1")]
+        public ActionResult test1()
+        {
+            return Result("test1");
+        }
+
         [HttpPost, Route("add-new-user")]
         public ActionResult AddNewUser([FromBody] AddNewRequestDto dto)
         {
@@ -90,6 +96,18 @@ namespace Rishvi.Modules.Users.Api
         public ActionResult PrintManifest(Models.PrintManifestRequest dto)
         {
             return Result(_userService.PrintManifest(dto));
+        }
+
+        [HttpGet, Route("install/{token}")]
+        public ActionResult AddNewUser(string token)
+        {
+            return Result(_userService.Install(token));
+        }
+
+        [HttpGet, Route("user-available-services/{token}")]
+        public ActionResult UserAvailableServices(string token)
+        {
+            return Result(_userService.UserAvailableServices(token));
         }
 
         [HttpGet, Route("test")]

@@ -17,7 +17,13 @@
   <ItemGroup>
     <Compile Remove="Modules\Users\Api\LinnworksAuthController.cs" />
     <Compile Remove="Modules\Users\Filters\UserFilter.cs" />
+    <Compile Remove="Modules\Users\Models\AmazonS3.cs" />
     <Compile Remove="Modules\Users\Services\LinnworksAuthService.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Migrations\20200910175313_init.cs" />
+    <Compile Include="Migrations\20200910175313_init.Designer.cs" />
+    <Compile Include="Migrations\RishviDbContextModelSnapshot.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Amazon.Lambda.Serialization.Json" Version="1.7.0" />

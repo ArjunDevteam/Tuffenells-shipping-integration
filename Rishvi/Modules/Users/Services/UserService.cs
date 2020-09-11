@@ -1,12 +1,17 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using RestSharp;
 using Rishvi.Modules.AddNewRequest.Models.DTOs;
 using Rishvi.Modules.Core;
 using Rishvi.Modules.Core.Content;
 using Rishvi.Modules.Core.Data;
 using Rishvi.Modules.Core.Helpers;
+using Rishvi.Modules.Linn.Models;
 using Rishvi.Modules.Users.Models;
 using Rishvi.Modules.Users.Validators;
+using Spinx.Web.Modules.Core.Aws;
 using Spire.Pdf;
 using System;
 using System.Collections.Generic;
@@ -31,6 +36,8 @@ namespace Rishvi.Modules.Users.Services
         CancelLabelResponse CancelLabel(CancelLabelRequest request);
         CreateManifestResponse CreateManifest(CreateManifestRequest request);
         PrintManifestResponse PrintManifest(PrintManifestRequest request);
+        TokenModel Install(string token);
+        UserAvailableServicesResponse UserAvailableServices(string AuthorizationToken);
 
         string test();
     }
@@ -39,21 +46,27 @@ namespace Rishvi.Modules.Users.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IRepository<User> _userRepository;
+        private readonly IRepository<linnUser> _linnuserRepository;
         private readonly IMapper _mapper;
         public UserEditValidator UserEditValidator = new UserEditValidator();
         public UserDeleteValidator UserDeleteValidator = new UserDeleteValidator();
-        public UserService(IRepository<User> userRepository, IUnitOfWork unitOfWork, IMapper mapper)
+        private readonly IWebHostEnvironment _hostingEnvironment;
+        private readonly IConfiguration _config;
+        public UserService(IRepository<User> userRepository, IRepository<linnUser> linnuserRepository, IUnitOfWork unitOfWork, IMapper mapper, IWebHostEnvironment environment, IConfiguration config)
         {
             _mapper = mapper;
             _userRepository = userRepository;
+            _linnuserRepository = linnuserRepository;
             _unitOfWork = unitOfWork;
+            _hostingEnvironment = environment;
+            _config = config;
         }
 
         public AddNewUserResponse CreateNewUser(AddNewRequestDto dto)
         {
             try
             {
-                AuthorizationConfig newConfig = AuthorizationConfig.CreateNew(dto.Email, dto.LinnworksUniqueIdentifier, dto.AccountName);
+                AuthorizationConfig newConfig = AuthorizationConfig.CreateNew(dto.Email, dto.LinnworksUniqueIdentifier, dto.AccountName, _hostingEnvironment.WebRootPath);
                 return new AddNewUserResponse()
                 {
                     AuthorizationToken = newConfig.AuthorizationToken.ToString()
@@ -310,8 +323,8 @@ namespace Rishvi.Modules.Users.Services
                     string newTrackingNumber = request.CountryCode + " " + Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
                     if (response.LeadTrackingNumber == "") { response.LeadTrackingNumber = newTrackingNumber; }
                     var basictoken = BuildBasicAuthenticationString(auth.Username, auth.Password);
-                    string path = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\Format");
-                    string postData = System.IO.File.ReadAllText(path + "/" + "CreateShipment.txt")
+                   // string path = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\Format");
+                    string postData = AwsS3.GetS3File("Format/CreateShipment.txt")
                         .Replace("{{user}}", "222201010039456030")
                         .Replace("{{pass}}", "222201010039456030")
                         .Replace("{{product}}", "222201010039456030")
@@ -349,6 +362,34 @@ namespace Rishvi.Modules.Users.Services
                         PDFBytesDocumentationBase64 = new string[] { },
                         TrackingNumber = newTrackingNumber
                     });
+
+                    //GeneratelabelLog generatelabelLog = new GeneratelabelLog() {
+                    //    Id = hhid,
+                    //    Token = AuthorizationToken,
+                    //    Orderid = OrderId.ToString(),
+                    //    Orderreference = OrderReference,
+                    //    Logs = mlogs,
+                    //    Created = DateTime.UtcNow,
+                    //    Linnrequest = Newtonsoft.Json.JsonConvert.SerializeObject(request),
+                    //    Linnresponse = Newtonsoft.Json.JsonConvert.SerializeObject(response),
+                    //    DHLrequest = postData,
+                    //    DHLresponse = pdfresp.labelurlbyts,
+                    //    Iserror = pdfresp.isError,
+                    //    Error = pdfresp.Error,
+                    //    Labelid = pdfresp.labelid
+                    //};
+
+                    //GenerateLabelCount generatelabelcount = new GenerateLabelCount()
+                    //{
+                    //    Id = hhid,
+                    //    Token = AuthorizationToken,
+                    //    Orderid = OrderId.ToString(),
+                    //    Created = DateTime.UtcNow,
+                    //    Iserror = pdfresp.isError,
+                    //    Labelid = pdfresp.labelid,
+                    //    Error = pdfresp.Error
+                    //};
+
                 }
 
                 return response;
@@ -372,53 +413,48 @@ namespace Rishvi.Modules.Users.Services
             return Convert.ToBase64String(byteArray);
         }
 
-        //public linnuser Auth(string token)
-        //{
+        public linnUser Auth(string token)
+        {
 
-        //    // Create a request using a URL that can receive a post. 
-        //    WebRequest request = WebRequest.Create("https://api.linnworks.net//api/Auth/AuthorizeByApplication");
-        //    // Set the Method property of the request to POST.
-        //    request.Method = "POST";
-        //    // Create POST data and convert it to a byte array.
-        //    string postData = "request={ \"ApplicationId\": \"" + AppSettings.ApplicationId + "\", \"ApplicationSecret\": \"" + AppSettings.ApplicationSecret + "\", \"Token\": \"" + token + "\" }";
-        //    byte[] byteArray = Encoding.UTF8.GetBytes(postData);
-        //    // Set the ContentType property of the WebRequest.
-        //    request.ContentType = "application/x-www-form-urlencoded";
-        //    // Set the ContentLength property of the WebRequest.
-        //    request.ContentLength = byteArray.Length;
-        //    // Get the request stream.
-        //    Stream dataStream = request.GetRequestStream();
-        //    // Write the data to the request stream.
-        //    dataStream.Write(byteArray, 0, byteArray.Length);
-        //    // Close the Stream object.
-        //    dataStream.Close();
-        //    // Get the response.
-        //    WebResponse response = request.GetResponse();
-        //    // Get the stream containing content returned by the server.
-        //    dataStream = response.GetResponseStream();
-        //    // Open the stream using a StreamReader for easy access.
-        //    StreamReader reader = new StreamReader(dataStream);
-        //    // Read the content.
-        //    string responseFromServer = reader.ReadToEnd();
-        //    // Display the content.
-        //    var js = new System.Web.Script.Serialization.JavaScriptSerializer();
-        //    // Clean up the streams.
-        //    reader.Close();
-        //    dataStream.Close();
-        //    response.Close();
-        //    return Newtonsoft.Json.JsonConvert.DeserializeObject<linnuser>(responseFromServer);
-        //}
+            var client = new RestClient("https://api.linnworks.net/api/Auth/AuthorizeByApplication");
+            LinnworkAuthFilterDto filter = new LinnworkAuthFilterDto()
+            {
+                ApplicationId = _config.GetSection("LinnworkAppCredential").GetSection("ApplicationId").Value,
+                ApplicationSecret = _config.GetSection("LinnworkAppCredential").GetSection("ApplicationSecret").Value,
+                Token = token
+            };
+            RestRequest request = new RestRequest(Method.POST);
+            //request.AddHeader("Authorization", token);
+            //request.AddHeader("Content-Type", "application/json");
+            //var filterJson = @"{
+            //                        ""ApplicationId"": ""c72b1b12-c98c-4eb0-a841-ad95921fe1fb"",
+            //                        ""ApplicationSecret"": ""d6b4cd7d-6412-468e-a60a-d721181c610e"",
+            //                        ""Token"": ""f1b7ffe4-2ff5-39ab-3b13-5cdb61e46ac5""
+            //                    }";
+            var filterJson = JsonConvert.SerializeObject(filter);
+            request.AddParameter("application/json", filterJson, ParameterType.RequestBody);
+
+            IRestResponse response = client.Execute(request);
+            if (response.StatusCode == System.Net.HttpStatusCode.OK)
+            {
+
+                var linnworkAuthDto = JsonConvert.DeserializeObject<linnUser>(response.Content);
+                return linnworkAuthDto;
+            }
+            return null;
+        }
 
 
         public string test()
         {
-            ImageHelper.PDFtoImage(Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\PDF\dummy.pdf"), Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\PDF\convertToEmf.png"));
-            var base64String = Convert.ToBase64String(File.ReadAllBytes(Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\PDF\convertToEmf.png")));
+            ImageHelper.PDFtoImage(AwsS3.GetS3File("PDF/dummy.pdf"), AwsS3.GetS3File("PDF/dummy.png")); ;
+            var base64String = AwsS3.GetS3File("PDF/dummy.png");
             return base64String;
         }
 
         public string DHLgetLabel(string url, string method, string token, string body)
         {
+            test();
             //Testing purpose
             //var pdfP = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\PDF\dummy.pdf");
             //var fileName = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\PDF\dummy.png");
@@ -428,7 +464,7 @@ namespace Rishvi.Modules.Users.Services
             //pdfToImg.ScaleTo = 200; // fit 200x200 box
             //pdfToImg.GenerateImage(pdfP, 1, ImageFormat.Png, fileName);
             //var base64String = Convert.ToBase64String(File.ReadAllBytes(Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\PDF\dummy.png")));
-            
+
 
             // Create a request using a URL that can receive a post. 
             WebRequest request = WebRequest.Create("https://cig.dhl.de/services/sandbox/soap");
@@ -473,6 +509,7 @@ namespace Rishvi.Modules.Users.Services
             string pathImage = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\GenerateLabel\Image");
             using (Stream output = File.OpenWrite(pathpdf + "/" + originalFileName + ".pdf"))
             {
+                AwsS3.UploadFileToS3(output, "PDF/" + originalFileName + ".json");
                 streamWithFileBody.CopyTo(output);
             }
 
@@ -484,6 +521,54 @@ namespace Rishvi.Modules.Users.Services
             dataStream.Close();
             response.Close();
             return base64String;
+        }
+
+        public UserAvailableServicesResponse UserAvailableServices(string AuthorizationToken)
+        {
+  
+            UserAvailableServicesResponse resp = new UserAvailableServicesResponse();
+            AuthorizationConfig auth = AuthorizationConfig.Load(AuthorizationToken);
+            if (auth == null)
+            {
+                resp = new UserAvailableServicesResponse("Authorization failed for token " + AuthorizationToken);
+            }
+            return new UserAvailableServicesResponse()
+            {
+                Services = ServicesDto.GetServices
+            };
+        }
+
+        public TokenModel Install(string token)
+        {
+            var data = Auth(token);
+
+            if (data != null)
+            {
+                var existingData = _linnuserRepository.GetById(data.Id);
+                if (existingData == null)
+                {
+                    //insert data into database
+                    _linnuserRepository.Insert(data);
+                    _unitOfWork.Commit();
+                }
+                else
+                {
+                    //delete data into database
+                    _linnuserRepository.Delete(data.Id);
+                    _unitOfWork.Commit();
+
+                    //insert data into database
+                    _linnuserRepository.Insert(data);
+                    _unitOfWork.Commit();
+                }
+                
+            }
+
+            return new TokenModel()
+            {
+                email = data.Email,
+                server = data.Server
+            };
         }
 
         public CancelLabelResponse CancelLabel(CancelLabelRequest request)
