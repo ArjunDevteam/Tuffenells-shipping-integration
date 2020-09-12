@@ -3,15 +3,17 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Rishvi.Modules.Core.Data;
 
 namespace Rishvi.Migrations
 {
     [DbContext(typeof(RishviDbContext))]
-    partial class RishviDbContextModelSnapshot : ModelSnapshot
+    [Migration("20200911131439_generate-label")]
+    partial class generatelabel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -127,54 +129,6 @@ namespace Rishvi.Migrations
                     b.ToTable("linnUser");
                 });
 
-            modelBuilder.Entity("Rishvi.Modules.Users.Models.GenerateLabelCount", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWID()");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DHLrequest")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("DHLresponse")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Error")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("Iserror")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Labelid")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Linnrequest")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Linnresponse")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Logs")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Orderid")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Orderreference")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Token")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("GenerateLabelCount");
-                });
-
             modelBuilder.Entity("Rishvi.Modules.Users.Models.GeneratelabelLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -221,36 +175,6 @@ namespace Rishvi.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("GeneratelabelLog");
-                });
-
-            modelBuilder.Entity("Rishvi.Modules.Users.Models.LabelLogs", b =>
-                {
-                    b.Property<Guid>("GenerateLabelId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("GeneratelabelLogId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWID()");
-
-                    b.Property<string>("Log")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("GenerateLabelId");
-
-                    b.HasIndex("GeneratelabelLogId");
-
-                    b.ToTable("LabelLogs");
-                });
-
-            modelBuilder.Entity("Rishvi.Modules.Users.Models.LabelLogs", b =>
-                {
-                    b.HasOne("Rishvi.Modules.Users.Models.GeneratelabelLog", "GeneratelabelLog")
-                        .WithMany()
-                        .HasForeignKey("GeneratelabelLogId");
                 });
 #pragma warning restore 612, 618
         }

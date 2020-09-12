@@ -15,5 +15,7 @@ namespace Rishvi.Modules.Core.Filters
 
         public DateTime FromUpdatedAt { get; set; }
         public DateTime ToUpdatedAt { get; set; }
+
+        public string OrderId { get; set; }
     }
 }

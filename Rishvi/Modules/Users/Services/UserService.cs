@@ -7,9 +7,11 @@ using Rishvi.Modules.AddNewRequest.Models.DTOs;
 using Rishvi.Modules.Core;
 using Rishvi.Modules.Core.Content;
 using Rishvi.Modules.Core.Data;
+using Rishvi.Modules.Core.Filters;
 using Rishvi.Modules.Core.Helpers;
 using Rishvi.Modules.Linn.Models;
 using Rishvi.Modules.Users.Models;
+using Rishvi.Modules.Users.Models.DTOs;
 using Rishvi.Modules.Users.Validators;
 using Spinx.Web.Modules.Core.Aws;
 using Spire.Pdf;
@@ -18,6 +20,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -37,6 +40,7 @@ namespace Rishvi.Modules.Users.Services
         CreateManifestResponse CreateManifest(CreateManifestRequest request);
         PrintManifestResponse PrintManifest(PrintManifestRequest request);
         TokenModel Install(string token);
+        Result InsertData(GenerateLabelFilterDto dto);
         UserAvailableServicesResponse UserAvailableServices(string AuthorizationToken);
 
         string test();
@@ -47,16 +51,22 @@ namespace Rishvi.Modules.Users.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IRepository<User> _userRepository;
         private readonly IRepository<linnUser> _linnuserRepository;
+        private readonly IRepository<GeneratelabelLog> _generateLabelRepository;
+        private readonly IRepository<LabelLogs> _labelLogsRepository;
+        private readonly IRepository<GenerateLabelCount> _generatelabelcountRepository;
         private readonly IMapper _mapper;
         public UserEditValidator UserEditValidator = new UserEditValidator();
         public UserDeleteValidator UserDeleteValidator = new UserDeleteValidator();
         private readonly IWebHostEnvironment _hostingEnvironment;
         private readonly IConfiguration _config;
-        public UserService(IRepository<User> userRepository, IRepository<linnUser> linnuserRepository, IUnitOfWork unitOfWork, IMapper mapper, IWebHostEnvironment environment, IConfiguration config)
+        public UserService(IRepository<User> userRepository, IRepository<linnUser> linnuserRepository, IRepository<GeneratelabelLog> generateLabelRepository, IRepository<LabelLogs> labelLogsRepository, IRepository<GenerateLabelCount> generatelabelcountRepository, IUnitOfWork unitOfWork, IMapper mapper, IWebHostEnvironment environment, IConfiguration config)
         {
             _mapper = mapper;
             _userRepository = userRepository;
             _linnuserRepository = linnuserRepository;
+            _generateLabelRepository = generateLabelRepository;
+            _labelLogsRepository = labelLogsRepository;
+            _generatelabelcountRepository = generatelabelcountRepository;
             _unitOfWork = unitOfWork;
             _hostingEnvironment = environment;
             _config = config;
@@ -285,13 +295,16 @@ namespace Rishvi.Modules.Users.Services
         {
             try
             {
+                List<string> mlogs = new List<string>();
+                mlogs.Add("Label request get from linnworkson " + DateTime.UtcNow.ToString("dd/MM/yyyy hh:mm:ss"));
                 AuthorizationConfig auth = AuthorizationConfig.Load(request.AuthorizationToken);
                 AuthorizationConfig.Log(request.OrderReference, request.AuthorizationToken, Newtonsoft.Json.JsonConvert.SerializeObject(request), "GenerateLabel");
                 if (auth == null)
                 {
+                    mlogs.Add("Authorization failed for token " + request.AuthorizationToken);
                     return new GenerateLabelResponse("Authorization failed for token " + request.AuthorizationToken);
                 }
-
+                mlogs.Add("Request for customer - " + auth.ContactName + "," + auth.CompanyName);
                 // load all the services we have (either for this user specifically or all services)
                 List<CourierService> services = ServicesDto.GetServices;
 
@@ -299,6 +312,7 @@ namespace Rishvi.Modules.Users.Services
                 CourierService selectedService = services.Find(s => s.ServiceUniqueId == request.ServiceId);
                 if (selectedService == null)
                 {
+                    mlogs.Add("Service Id " + request.ServiceId.ToString() + " is not available");
                     throw new Exception("Service Id " + request.ServiceId.ToString() + " is not available");
                 }
 
@@ -306,6 +320,7 @@ namespace Rishvi.Modules.Users.Services
                 string serviceCode = selectedService.ServiceCode;
                 //and some other information, whatever we need
                 string VendorCode = selectedService.ServiceGroup;
+                mlogs.Add("Service Id " + request.ServiceId.ToString() + " is not available");
 
                 //create response class, we will be adding packages to it
                 GenerateLabelResponse response = new GenerateLabelResponse();
@@ -317,13 +332,156 @@ namespace Rishvi.Modules.Users.Services
 
                 foreach (var package in request.Packages)   // we need to generate a label for each package in the consignment
                 {
+                    mlogs.Add("Customer Order Referencee - " + request.OrderReference);
+                    mlogs.Add("Customer Name - " + request.Name);
+                    mlogs.Add("Customer Company name - " + request.CompanyName);
+                    mlogs.Add("Customer Address line 1 - " + request.AddressLine1);
+                    mlogs.Add("Customer Address line 2 - " + request.AddressLine2);
+                    mlogs.Add("Customer Address line 3 - " + request.AddressLine3);
+                    mlogs.Add("Customer City - " + request.Town);
+                    mlogs.Add("Customer State - " + request.Region);
+                    mlogs.Add("Customer Country - " + request.CountryCode);
+                    mlogs.Add("Customer PostCode - " + request.Postalcode);
                     // an order may have extended property bound to it, here we can pass any specific parameter we need
                     // in this specific example we will be taking SafePlace extended property of the order and outputting it on the label
-                    string safePlace1 = "";
-                    string newTrackingNumber = request.CountryCode + " " + Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
-                    if (response.LeadTrackingNumber == "") { response.LeadTrackingNumber = newTrackingNumber; }
-                    var basictoken = BuildBasicAuthenticationString(auth.Username, auth.Password);
-                   // string path = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\Format");
+                    string strnam1 = "1234567890";
+                    string strnum1 = "1234567890";
+                    string streetname = "";
+                    var num = Regex.Match(request.AddressLine1 + request.AddressLine2 + request.AddressLine3, @"(\d+)(?!.*\d)").Value;
+                    string streetnumber = num;
+                    if (serviceCode != "V01PAK")
+                    {
+                        streetnumber = request.AddressLine2;
+                        if (request.AddressLine2 == "")
+                        {
+                            var mycut = Regex.Split(request.AddressLine1, " ");
+                            streetnumber = mycut[0];
+                        }
+                    }
+                    if (streetnumber.Length > 0)
+                    {
+                        strnum1 = streetnumber.ToString();
+                    }
+                    string[] streetnamelist = Regex.Split("@#@" + request.AddressLine1 + "@##@" + request.AddressLine2 + "@###@" + request.AddressLine3, num);
+                    if (streetnamelist.Length > 0)
+                    {
+                        string streetnamefull = streetnamelist[0];
+                        if (streetnamefull.Contains("@###@"))
+                        {
+                            string[] mystrnm = Regex.Split(streetnamefull, "@###@");
+                            streetname = mystrnm[1];
+                            if (streetname == "")
+                            {
+                                string[] mystrnmthird = Regex.Split(mystrnm[0], "@##@");
+                                streetname = mystrnmthird[1];
+                                if (streetname == "")
+                                {
+                                    string[] mystrnmsecond = Regex.Split(mystrnmthird[0], "@#@");
+                                    streetname = mystrnmsecond[1];
+                                }
+                            }
+                        }
+                        else if (streetnamefull.Contains("@##@"))
+                        {
+                            string[] mystrnm = Regex.Split(streetnamefull, "@##@");
+                            streetname = mystrnm[1];
+                            if (streetname == "")
+                            {
+                                string[] mystrnmsecond = Regex.Split(mystrnm[0], "@#@");
+                                streetname = mystrnmsecond[1];
+                            }
+                        }
+                        else if (streetnamefull.Contains("@#@"))
+                        {
+                            string[] mystrnm = Regex.Split(streetnamefull, "@#@");
+                            streetname = mystrnm[1];
+
+                        }
+                        if (serviceCode != "V01PAK")
+                        {
+                            streetname = request.AddressLine1;
+                            if (request.AddressLine2 == "")
+                            {
+                                var mycutr = Regex.Split(request.AddressLine1, " ");
+                                streetname = mycutr[1];
+                            }
+                        }
+                        if (streetname.Length > 0)
+                        {
+                            strnam1 = streetname.ToString();
+                        }
+                    }
+                    if (request.OrderExtendedProperties.Count > 0)
+                    {
+
+                        var strname = request.OrderExtendedProperties.Where(p => p.Name == "StreetName").FirstOrDefault();
+                        var strnumber = request.OrderExtendedProperties.Where(p => p.Name == "StreetNumber").FirstOrDefault();
+                        if (strname != null)
+                        {
+                            streetname = strname.Value;
+                            if (streetname.Length > 0)
+                            {
+                                strnam1 = streetname.ToString();
+                            }
+
+
+                        }
+                        if (strnumber != null)
+                        {
+                            streetnumber = strnumber.Value;
+                            if (streetnumber.Length > 0)
+                            {
+                                strnum1 = streetnumber.ToString();
+                            }
+                        }
+
+                    }
+                    mlogs.Add("Customer Street Name - " + streetname);
+                    mlogs.Add("Customer Street Number - " + streetnumber);
+
+                    var basictoken = AuthorizationConfig.BuildBasicAuthenticationString(AuthorizationConfig.AppUsername, AuthorizationConfig.AppPassword);
+                    string path = AppDomain.CurrentDomain.BaseDirectory + "Format";
+                    var otheraccount = request.ServiceConfigItems.Where(p => p.ConfigItemId == "AccountNumber").FirstOrDefault();
+                    if (otheraccount != null)
+                    {
+                        if (otheraccount.SelectedValue != "")
+                        {
+                            auth.AccountNumber = otheraccount.SelectedValue;
+                        }
+                    }
+                    var defaultweight = request.ServiceConfigItems.Where(p => p.ConfigItemId == "DefaultWeight").FirstOrDefault();
+                    if (defaultweight != null)
+                    {
+                        if (defaultweight.SelectedValue != "")
+                        {
+                            if (package.PackageWeight == 0)
+                            {
+                                package.PackageWeight = Convert.ToDecimal(Convert.ToDecimal(defaultweight.SelectedValue) / 1000);
+                            }
+                            else
+                            {
+                                package.PackageWeight = Convert.ToDecimal(package.PackageWeight / 1000);
+                            }
+                        }
+                        else
+                        {
+                            package.PackageWeight = Convert.ToDecimal(package.PackageWeight / 1000);
+                        }
+                    }
+                    else
+                    {
+                        package.PackageWeight = Convert.ToDecimal(package.PackageWeight / 1000);
+                    }
+                    mlogs.Add("Service Account Number - " + auth.AccountNumber);
+                    string compna = "";
+                    string packpath = "";
+                    if (streetname.Trim().ToLower() == "packstation")
+                    {
+                        packpath = "P";
+                        compna = Regex.Match(request.AddressLine1, @"(\d+)(?!.*\d)").Value.ToString();
+                        mlogs.Add("Service Packstartion Post Number - " + compna);
+                    }
+                    // string path = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\Format");
                     string postData = AwsS3.GetS3File("Format/CreateShipment.txt")
                         .Replace("{{user}}", "222201010039456030")
                         .Replace("{{pass}}", "222201010039456030")
@@ -353,42 +511,76 @@ namespace Rishvi.Modules.Users.Services
                         .Replace("{{rcountryISOCode}}", "222201010039456030")
                         .Replace("{{rstate}}", "222201010039456030");
                     var pdfresp = DHLgetLabel("getLabel", "POST", basictoken, postData);
-                    response.Package.Add(new PackageResponse()
+                    if (pdfresp.IsError == false)
                     {
-                        LabelHeight = 6,
-                        LabelWidth = 4,
-                        PNGLabelDataBase64 = pdfresp,
-                        SequenceNumber = package.SequenceNumber,
-                        PDFBytesDocumentationBase64 = new string[] { },
-                        TrackingNumber = newTrackingNumber
-                    });
+                        mlogs.Add("Label response labelid - " + pdfresp.Labelid);
+                        mlogs.Add("Label response Tracking Number - " + pdfresp.TrackingNumber);
+                        if (response.LeadTrackingNumber == "")
+                        { response.LeadTrackingNumber = pdfresp.TrackingNumber; }
+                        response.Package.Add(new PackageResponse()
+                        {
+                            LabelHeight = 6,
+                            LabelWidth = 4,
+                            PNGLabelDataBase64 = pdfresp.PNGBase64,
+                            SequenceNumber = package.SequenceNumber,
+                            PDFBytesDocumentationBase64 = new string[] { },
+                            TrackingNumber = pdfresp.TrackingNumber
+                        });
+                    }
+                    else
+                    {
+                        mlogs.Add("Label response Error - " + pdfresp.Error);
+                        response.IsError = true;
+                        response.ErrorMessage = pdfresp.Error.Replace("The place is to this postal code is not known. The shipment is not leitcodierbar.", "");
+                    }
+                    mlogs.Add("Label response send to linnworks on " + DateTime.UtcNow.ToString("dd/MM/yyyy hh:mm:ss"));
 
-                    //GeneratelabelLog generatelabelLog = new GeneratelabelLog() {
-                    //    Id = hhid,
-                    //    Token = AuthorizationToken,
-                    //    Orderid = OrderId.ToString(),
-                    //    Orderreference = OrderReference,
-                    //    Logs = mlogs,
-                    //    Created = DateTime.UtcNow,
-                    //    Linnrequest = Newtonsoft.Json.JsonConvert.SerializeObject(request),
-                    //    Linnresponse = Newtonsoft.Json.JsonConvert.SerializeObject(response),
-                    //    DHLrequest = postData,
-                    //    DHLresponse = pdfresp.labelurlbyts,
-                    //    Iserror = pdfresp.isError,
-                    //    Error = pdfresp.Error,
-                    //    Labelid = pdfresp.labelid
-                    //};
+                    var hhid = Guid.NewGuid();
+                   
+                    GeneratelabelLog generatelabelLog = new GeneratelabelLog()
+                    {
+                        Id = hhid,
+                        Token = request.AuthorizationToken,
+                        Orderid = request.OrderId.ToString(),
+                        Orderreference = request.OrderReference,
+                        //Logs = mlogs,
+                        Created = DateTime.UtcNow,
+                        Linnrequest = Newtonsoft.Json.JsonConvert.SerializeObject(request),
+                        Linnresponse = Newtonsoft.Json.JsonConvert.SerializeObject(response),
+                        DHLrequest = postData,
+                        DHLresponse = pdfresp.Labelurlbyts,
+                        Iserror = pdfresp.IsError,
+                        Error = pdfresp.Error,
+                        Labelid = pdfresp.Labelid
+                    };
+                    _generateLabelRepository.Insert(generatelabelLog);
+                    _unitOfWork.Commit();
+                    
+                    foreach (var log in mlogs)
+                    {
+                        var l = new LabelLogs();
+                        l.Id = Guid.NewGuid();
+                        l.GenerateLabelId = generatelabelLog.Id;
+                        l.Log = log;
 
-                    //GenerateLabelCount generatelabelcount = new GenerateLabelCount()
-                    //{
-                    //    Id = hhid,
-                    //    Token = AuthorizationToken,
-                    //    Orderid = OrderId.ToString(),
-                    //    Created = DateTime.UtcNow,
-                    //    Iserror = pdfresp.isError,
-                    //    Labelid = pdfresp.labelid,
-                    //    Error = pdfresp.Error
-                    //};
+                        _labelLogsRepository.Insert(l);
+                        _unitOfWork.Commit();
+                    }
+
+
+                    GenerateLabelCount generatelabelcount = new GenerateLabelCount()
+                    {
+                        Id = hhid,
+                        Token = request.AuthorizationToken,
+                        Orderid = request.OrderId.ToString(),
+                        Created = DateTime.UtcNow,
+                        Iserror = pdfresp.IsError,
+                        Labelid = pdfresp.Labelid,
+                        Error = pdfresp.Error
+                    };
+
+                    _generatelabelcountRepository.Insert(generatelabelcount);
+                    _unitOfWork.Commit();
 
                 }
 
@@ -400,6 +592,8 @@ namespace Rishvi.Modules.Users.Services
             }
         }
 
+
+
         static byte[] imageToByteArray(System.Drawing.Image imageIn)
         {
             System.IO.MemoryStream ms = new System.IO.MemoryStream();
@@ -407,11 +601,7 @@ namespace Rishvi.Modules.Users.Services
             return ms.ToArray();
         }
 
-        private static string BuildBasicAuthenticationString(string username, string password)
-        {
-            var byteArray = Encoding.ASCII.GetBytes(string.Format("{0}:{1}", username, password));
-            return Convert.ToBase64String(byteArray);
-        }
+
 
         public linnUser Auth(string token)
         {
@@ -452,19 +642,9 @@ namespace Rishvi.Modules.Users.Services
             return base64String;
         }
 
-        public string DHLgetLabel(string url, string method, string token, string body)
+        public DHLResponse DHLgetLabel(string url, string method, string token, string body)
         {
             test();
-            //Testing purpose
-            //var pdfP = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\PDF\dummy.pdf");
-            //var fileName = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\PDF\dummy.png");
-            ////var pdfP = pathpdf + "/" + originalFileName + ".pdf";
-            ////var fileName = pathpdf + "/" + originalFileName + ".png";
-            //var pdfToImg = new NReco.PdfRenderer.PdfToImageConverter();
-            //pdfToImg.ScaleTo = 200; // fit 200x200 box
-            //pdfToImg.GenerateImage(pdfP, 1, ImageFormat.Png, fileName);
-            //var base64String = Convert.ToBase64String(File.ReadAllBytes(Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\PDF\dummy.png")));
-
 
             // Create a request using a URL that can receive a post. 
             WebRequest request = WebRequest.Create("https://cig.dhl.de/services/sandbox/soap");
@@ -520,12 +700,112 @@ namespace Rishvi.Modules.Users.Services
             reader.Close();
             dataStream.Close();
             response.Close();
-            return base64String;
+            return new DHLResponse() { PNGBase64 = base64String, Labelurl = null, Labelid = "", Labelurlbyts = responseFromServer, TrackingNumber = null, IsError = false, Error = base64String };
         }
 
+        public DHLResponse DHLgetManifest(string url, string method, string token, string body)
+        {
+            try
+            {
+                // Create a request using a URL that can receive a post. 
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://cig.dhl.de/services/" + AuthorizationConfig.DHLStage + "/soap");
+                // Set the Method property of the request to POST.
+                request.Method = "POST";
+                // Create POST data and convert it to a byte array.
+                string postData = body;
+                byte[] byteArray = Encoding.UTF8.GetBytes(postData);
+                // Set the ContentType property of the WebRequest.
+                request.ContentType = "text/xml;charset=utf-8";
+                request.Headers.Add("SOAPAction", "urn:" + url);
+                request.Headers.Add("soap_version", "2");
+                request.Headers.Add("Authorization", "Basic " + token);
+                // Set the ContentLength property of the WebRequest.
+                request.ContentLength = byteArray.Length;
+                //You must change the path to point to your .cer file location. 
+                //string path = AppDomain.CurrentDomain.BaseDirectory + "Format";
+                //X509Certificate Cert = X509Certificate.CreateFromCertFile(path + "/" + "trusted_root_ca_sha256_g2.crt");
+
+                //// You must change the URL to point to your Web server.
+                //request.ClientCertificates.Add(Cert);
+                // Get the request stream.
+                Stream dataStream = request.GetRequestStream();
+                // Write the data to the request stream.
+                dataStream.Write(byteArray, 0, byteArray.Length);
+                // Close the Stream object.
+                dataStream.Close();
+                // Get the response.
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                // Get the stream containing content returned by the server.
+                dataStream = response.GetResponseStream();
+                // Open the stream using a StreamReader for easy access.
+                StreamReader reader = new StreamReader(dataStream);
+                // Read the content.
+                string responseFromServer = reader.ReadToEnd();
+                // Display the content.
+                if (responseFromServer.Contains("<statusCode>0</statusCode>"))
+                {
+                    // using the method 
+
+                    reader.Close();
+                    dataStream.Close();
+                    response.Close();
+                    return new DHLResponse() { Labelurl = responseFromServer, TrackingNumber = "", IsError = false };
+                }
+                else
+                {
+                    string base64String = "";
+                    string[] strlist = Regex.Split(responseFromServer, @"<statusMessage>");
+                    for (var k = 1; k < strlist.Length; k++)
+                    {
+                        string[] strlist2 = Regex.Split(strlist[k], @"</statusMessage>");
+                        base64String += strlist2[0] + ",";
+                    }
+                    if (base64String == "")
+                    {
+                        string[] strlist1 = Regex.Split(responseFromServer, @"<statusText>");
+                        for (var k = 1; k < strlist1.Length; k++)
+                        {
+                            string[] strlist21 = Regex.Split(strlist1[k], @"</statusText>");
+                            base64String += strlist21[0] + ",";
+                        }
+
+                    }
+
+                    HttpWebRequest request2 = (HttpWebRequest)WebRequest.Create("https://translate.yandex.net/api/v1.5/tr.json/translate?key=" + AuthorizationConfig.LangKey + "&text=" + base64String + "&lang=en");
+                    Stream dataStream2 = request2.GetRequestStream();
+                    HttpWebResponse response2 = (HttpWebResponse)request2.GetResponse();
+                    // Get the stream containing content returned by the server.
+
+                    dataStream2 = response2.GetResponseStream();
+                    // Open the stream using a StreamReader for easy access.
+                    StreamReader reader2 = new StreamReader(dataStream2);
+                    // Read the content.
+                    string responseFromServer2 = reader2.ReadToEnd();
+                    string[] streetnamelist = Regex.Split(responseFromServer2, "[");
+                    string[] streetnamelist2 = Regex.Split(streetnamelist[1], "]");
+                    base64String = streetnamelist2[0];
+                    return new DHLResponse() { Labelurl = null, TrackingNumber = null, IsError = true, Error = base64String };
+                }
+            }
+            catch (WebException e)
+            {
+                string text = "";
+                using (WebResponse response = e.Response)
+                {
+                    HttpWebResponse httpResponse = (HttpWebResponse)response;
+                    using (Stream data = response.GetResponseStream())
+                    {
+                        text = new StreamReader(data).ReadToEnd();
+
+                    }
+                }
+                return new DHLResponse() { Labelurl = null, TrackingNumber = null, IsError = true, Error = text };
+            }
+
+        }
         public UserAvailableServicesResponse UserAvailableServices(string AuthorizationToken)
         {
-  
+
             UserAvailableServicesResponse resp = new UserAvailableServicesResponse();
             AuthorizationConfig auth = AuthorizationConfig.Load(AuthorizationToken);
             if (auth == null)
@@ -561,7 +841,7 @@ namespace Rishvi.Modules.Users.Services
                     _linnuserRepository.Insert(data);
                     _unitOfWork.Commit();
                 }
-                
+
             }
 
             return new TokenModel()
@@ -571,12 +851,89 @@ namespace Rishvi.Modules.Users.Services
             };
         }
 
-        public CancelLabelResponse CancelLabel(CancelLabelRequest request)
+        public Result InsertData(Models.DTOs.GenerateLabelFilterDto dto)
         {
-            AuthorizationConfig auth = AuthorizationConfig.Load(request.AuthorizationToken);
+            var result = new Result();
+            var filter = dto ?? new Models.DTOs.GenerateLabelFilterDto();
+            List<GenerateLabelCount> allList = new List<GenerateLabelCount>();
+
+            var query = _generateLabelRepository.Get();
+            query = new GenerateLabelCountFilter(query, filter).FilteredQuery();
+
+            foreach (var d in query)
+            {
+                var count = new GenerateLabelCount()
+                {
+                    Id = d.Id,
+                    Token = d.Token,
+                    Labelid = d.Labelid,
+                    Orderid = d.Orderid,
+                    Created = d.Created,
+                    Iserror = d.Iserror,
+                    Error = d.Error
+                };
+
+                _generatelabelcountRepository.Insert(count);
+                _unitOfWork.Commit();
+            }
+            return result.SetSuccess("Log inserted");
+        }
+        public CancelLabelResponse CancelLabel(CancelLabelRequest requestdto)
+        {
+            AuthorizationConfig auth = AuthorizationConfig.Load(requestdto.AuthorizationToken);
+            //var trackingnum = System.IO.File.ReadAllText(AppDomain.CurrentDomain.BaseDirectory + AppSettings.ConfigStoragePath + "\\" + AuthorizationToken + "\\" + OrderReference + "-" + "tracking" + ".json");
+            var trackingnum = AwsS3.GetS3File(requestdto.OrderReference + "-" + "tracking" + ".json");
             if (auth == null)
             {
-                return new CancelLabelResponse("Authorization failed for token " + request.AuthorizationToken);
+                return new CancelLabelResponse("Authorization failed for token " + requestdto.AuthorizationToken);
+            }
+            var basictoken = AuthorizationConfig.BuildBasicAuthenticationString(AuthorizationConfig.AppUsername, AuthorizationConfig.AppPassword);
+            string postData = AwsS3.GetS3File("Format/Caclelabel.txt").Replace("{{user}}", auth.Username)
+                    .Replace("{{pass}}", auth.Password).Replace("{{shippmentnumber}}", trackingnum);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://cig.dhl.de/services/" + AuthorizationConfig.DHLStage + "/soap");
+            // Set the Method property of the request to POST.
+            request.Method = "POST";
+
+            byte[] byteArray = Encoding.UTF8.GetBytes(postData);
+            // Set the ContentType property of the WebRequest.
+            request.ContentType = "text/xml;charset=utf-8";
+            request.Headers.Add("SOAPAction", "urn:" + "deleteShipmentOrder");
+            request.Headers.Add("soap_version", "2");
+            request.Headers.Add("Authorization", "Basic " + basictoken);
+            // Set the ContentLength property of the WebRequest.
+            request.ContentLength = byteArray.Length;
+            //You must change the path to point to your .cer file location. 
+            //string path = AppDomain.CurrentDomain.BaseDirectory + "Format";
+            //X509Certificate Cert = X509Certificate.CreateFromCertFile(path + "/" + "trusted_root_ca_sha256_g2.crt");
+            // System.IO.File.WriteAllText(AppDomain.CurrentDomain.BaseDirectory + AppSettings.ConfigStoragePath + "/" + "cancelreq" + ".txt", postData);
+
+            AwsS3.UploadFileToS3(AuthorizationConfig.GenerateStreamFromString(postData), "Format/cancelreq.txt");
+            //// You must change the URL to point to your Web server.
+            //request.ClientCertificates.Add(Cert);
+            // Get the request stream.
+            Stream dataStream = request.GetRequestStream();
+            // Write the data to the request stream.
+            dataStream.Write(byteArray, 0, byteArray.Length);
+            // Close the Stream object.
+            dataStream.Close();
+            // Get the response.
+            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+            // Get the stream containing content returned by the server.
+            dataStream = response.GetResponseStream();
+            // Open the stream using a StreamReader for easy access.
+            StreamReader reader = new StreamReader(dataStream);
+            // Read the content.
+            string responseFromServer = reader.ReadToEnd();
+            // Display the content.
+            //System.IO.File.WriteAllText(AppDomain.CurrentDomain.BaseDirectory + AppSettings.ConfigStoragePath + "/" + "cancelresp" + ".txt", postData);
+            AwsS3.UploadFileToS3(AuthorizationConfig.GenerateStreamFromString(postData), "Format/cancelreq.txt");
+            if (responseFromServer.Contains("<statusCode>0</statusCode>"))
+            {
+
+            }
+            else
+            {
+
             }
 
             // implement label cancelation routine here 
@@ -585,14 +942,17 @@ namespace Rishvi.Modules.Users.Services
             return new CancelLabelResponse();
         }
 
-        public CreateManifestResponse CreateManifest(CreateManifestRequest request)
+        public CreateManifestResponse CreateManifest(CreateManifestRequest requestdto)
         {
-            AuthorizationConfig auth = AuthorizationConfig.Load(request.AuthorizationToken);
+            AuthorizationConfig auth = AuthorizationConfig.Load(requestdto.AuthorizationToken);
+            //var trackingnum = System.IO.File.ReadAllText(AppDomain.CurrentDomain.BaseDirectory + AppSettings.ConfigStoragePath + "\\" + AuthorizationToken + "\\" + OrderReference + "-" + "tracking" + ".json");
+            var trackingnum = AwsS3.GetS3File(requestdto.OrderReference+ "-" + "tracking" + ".json");
             if (auth == null)
             {
-                return new CreateManifestResponse("Authorization failed for token " + request.AuthorizationToken);
+                return new CreateManifestResponse("Authorization failed for token " + requestdto.AuthorizationToken);
             }
-
+            var basictoken = AuthorizationConfig.BuildBasicAuthenticationString(auth.Username, auth.Password);
+            string path = AppDomain.CurrentDomain.BaseDirectory + "Format";
             //here we can implement manifest submission, upload etc if needed
             //the request will contain all orderIds the customer is manifesting 
             // in this specific example we simply output a dummy manifest reference

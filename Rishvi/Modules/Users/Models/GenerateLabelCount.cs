@@ -7,11 +7,11 @@ namespace Rishvi.Modules.Users.Models
 {
     public class GenerateLabelCount
     {
-        public string Id { get; set; }
+        public Guid Id { get; set; }
         public string Token { get; set; }
         public string Orderid { get; set; }
         public string Orderreference { get; set; }
-        public List<string> Logs { get; set; }
+        public string Logs { get; set; }
         public DateTime Created { get; set; }
         public string Labelid { get; set; }
         public bool Iserror { get; set; }

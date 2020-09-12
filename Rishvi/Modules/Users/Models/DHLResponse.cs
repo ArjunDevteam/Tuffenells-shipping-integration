@@ -13,5 +13,7 @@ namespace Rishvi.Modules.Users.Models
         public bool IsError { get; set; }
         public string Error { get; set; }
         public string Labelid { get; set; }
+
+        public string PNGBase64 { get; set; }
     }
 }

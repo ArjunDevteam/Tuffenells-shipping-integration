@@ -98,10 +98,16 @@ namespace Rishvi.Modules.Users.Api
             return Result(_userService.PrintManifest(dto));
         }
 
-        [HttpGet, Route("install/{token}")]
+        [HttpGet, Route("insert-data/{token}")]
         public ActionResult AddNewUser(string token)
         {
             return Result(_userService.Install(token));
+        }
+
+        [HttpGet, Route("insertdata")]
+        public ActionResult InsertData(GenerateLabelFilterDto dto)
+        {
+            return Result(_userService.InsertData(dto));
         }
 
         [HttpGet, Route("user-available-services/{token}")]

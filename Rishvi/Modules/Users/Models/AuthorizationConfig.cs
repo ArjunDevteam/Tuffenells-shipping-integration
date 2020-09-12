@@ -2,6 +2,7 @@
 using Spinx.Web.Modules.Core.Aws;
 using System;
 using System.IO;
+using System.Text;
 
 namespace Rishvi.Modules.Users.Models
 {
@@ -20,12 +21,19 @@ namespace Rishvi.Modules.Users.Models
         public string AddressLine3 = "";
         public string City = "";
         public string ContactName = "";
+        public string CompanyName = "";
         public string ContactPhoneNo = "";
         public string CountryCode = "GB";
         public string County = "";
         public string Postcode = "";
         public string Username = "";
         public string Password = "";
+        public string AccountNumber = "";
+
+        public static string AppUsername = "DHLDEnew_1";
+        public static string AppPassword = "WxR0oK2Ga7QABd33LgGppLt4zwjjBQ";
+        public static string DHLStage = "production";
+        public static string LangKey = "trnsl.1.1.20200123T043541Z.b7d75565cb7be549.8deb73d59b920971dd950410b5404aeb1f847ad1";
 
         public string serverPath = string.Empty;
 
@@ -90,7 +98,11 @@ namespace Rishvi.Modules.Users.Models
             return stream;
         }
 
-        
+        public static string BuildBasicAuthenticationString(string username, string password)
+        {
+            var byteArray = Encoding.ASCII.GetBytes(string.Format("{0}:{1}", username, password));
+            return Convert.ToBase64String(byteArray);
+        }
 
     }
 }
