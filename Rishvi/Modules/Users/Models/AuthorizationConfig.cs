@@ -16,16 +16,16 @@ namespace Rishvi.Modules.Users.Models
         public Boolean IsConfigActive = false;
         public string ConfigStatus = "";
 
+        public string ContactName = "";
         public string AddressLine1 = "";
         public string AddressLine2 = "";
         public string AddressLine3 = "";
         public string City = "";
-        public string ContactName = "";
         public string CompanyName = "";
         public string ContactPhoneNo = "";
         public string CountryCode = "GB";
         public string County = "";
-        public string Postcode = "";
+        public string PostCode = "";
         public string Username = "";
         public string Password = "";
         public string AccountNumber = "";
@@ -74,9 +74,9 @@ namespace Rishvi.Modules.Users.Models
         public void Save()
         {
             string jsonData = Newtonsoft.Json.JsonConvert.SerializeObject(this);
-            Stream stream =  GenerateStreamFromString(jsonData);
-            
-            AwsS3.UploadFileToS3(stream, "Files/" +this.AuthorizationToken.ToString() + ".json");
+            Stream stream = GenerateStreamFromString(jsonData);
+
+            AwsS3.UploadFileToS3(stream, "Files/" + this.AuthorizationToken.ToString() + ".json");
         }
 
         public static void Log(string ordnum, string token, string data, string type)

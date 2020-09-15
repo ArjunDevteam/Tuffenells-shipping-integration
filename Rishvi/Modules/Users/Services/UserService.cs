@@ -18,6 +18,7 @@ using Spire.Pdf;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
@@ -86,7 +87,6 @@ namespace Rishvi.Modules.Users.Services
             {
                 return new AddNewUserResponse("AddNewUser error : " + ex.Message);
             }
-
         }
 
 
@@ -482,34 +482,37 @@ namespace Rishvi.Modules.Users.Services
                         mlogs.Add("Service Packstartion Post Number - " + compna);
                     }
                     // string path = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\Format");
-                    string postData = AwsS3.GetS3File("Format/CreateShipment.txt")
-                        .Replace("{{user}}", "222201010039456030")
-                        .Replace("{{pass}}", "222201010039456030")
-                        .Replace("{{product}}", "222201010039456030")
-                        .Replace("{{accountNumber}}", "222201010039456030")
-                        .Replace("{{shipmentDate}}", "222201010039456030")
-                        .Replace("{{returnShipmentReference}}", "222201010039456030")
-                        .Replace("{{recipientEmailAddress}}", "222201010039456030")
-                        .Replace("{{sname1}}", "222201010039456030")
-                        .Replace("{{sstreetName}}", "222201010039456030")
-                        .Replace("{{sstreetNumber}}", "222201010039456030")
-                        .Replace("{{saddressAddition}}", "222201010039456030")
-                        .Replace("{{sdispatchingInformation}}", "222201010039456030")
-                        .Replace("{{szip}}", "222201010039456030")
-                        .Replace("{{scity}}", "222201010039456030")
-                        .Replace("{{scountry}}", "222201010039456030")
-                        .Replace("{{scountryISOCode}}", "222201010039456030")
-                        .Replace("{{sstate}}", "222201010039456030")
-                         .Replace("{{rname1}}", "")
-                        .Replace("{{rstreetName}}", "222201010039456030")
-                        .Replace("{{rstreetNumber}}", "222201010039456030")
-                        .Replace("{{raddressAddition}}", "222201010039456030")
-                        .Replace("{{rdispatchingInformation}}", "222201010039456030")
-                        .Replace("{{rzip}}", "222201010039456030")
-                        .Replace("{{rcity}}", "222201010039456030")
-                        .Replace("{{rcountry}}", "222201010039456030")
-                        .Replace("{{rcountryISOCode}}", "222201010039456030")
-                        .Replace("{{rstate}}", "222201010039456030");
+                    string postData = AwsS3.GetS3File(path + "/" + packpath + serviceCode + ".txt")
+                        .Replace("{{user}}", auth.Username)
+                .Replace("{{pass}}", auth.Password)
+                .Replace("{{product}}", serviceCode)
+                .Replace("{{accountNumber}}", auth.AccountNumber)
+                .Replace("{{shipmentDate}}", DateTime.UtcNow.ToString("yyyy-MM-dd"))
+                .Replace("{{returnShipmentReference}}", request.OrderReference)
+                .Replace("{{recipientEmailAddress}}", request.Email)
+                .Replace("{{weight}}", package.PackageWeight.ToString())
+                .Replace("{{sname1}}", auth.ContactName)
+                .Replace("{{sstreetName}}", auth.AddressLine1)
+                .Replace("{{sstreetNumber}}", auth.AddressLine2)
+                .Replace("{{saddressAddition}}", auth.AddressLine3)
+                .Replace("{{sdispatchingInformation}}", auth.CompanyName)
+                .Replace("{{szip}}", auth.PostCode)
+                .Replace("{{scity}}", auth.City)
+                .Replace("{{scountry}}", auth.CountryCode)
+                .Replace("{{scountryISOCode}}", auth.CountryCode)
+                .Replace("{{sstate}}", auth.County)
+                .Replace("{{rname1}}", (request.Name + "," + request.CompanyName + "," + request.AddressLine1.Replace(strnam1, "").Replace(strnum1, "") + "," + request.AddressLine2.Replace(strnam1, "").Replace(strnum1, "") + "," + request.AddressLine3.Replace(strnam1, "").Replace(strnum1, "")).Replace(",,,,,", "").Replace(",,,,", "").Replace(",,,", "").Replace(",,", ""))
+                 .Replace("{{rpostnum}}", compna)
+                .Replace("{{rstreetName}}", streetname)
+                .Replace("{{rstreetNumber}}", streetnumber)
+                .Replace("{{raddressAddition}}", request.AddressLine3)
+                .Replace("{{rdispatchingInformation}}", request.CompanyName)
+                .Replace("{{rzip}}", request.Postalcode)
+                .Replace("{{rcity}}", request.Town)
+                .Replace("{{rcountry}}", request.CountryCode)
+                .Replace("{{rcountryISOCode}}", request.CountryCode)
+                .Replace("{{rstate}}", request.Region);
+
                     var pdfresp = DHLgetLabel("getLabel", "POST", basictoken, postData);
                     if (pdfresp.IsError == false)
                     {
@@ -535,55 +538,60 @@ namespace Rishvi.Modules.Users.Services
                     }
                     mlogs.Add("Label response send to linnworks on " + DateTime.UtcNow.ToString("dd/MM/yyyy hh:mm:ss"));
 
-                    var hhid = Guid.NewGuid();
-                   
-                    GeneratelabelLog generatelabelLog = new GeneratelabelLog()
+                    try
                     {
-                        Id = hhid,
-                        Token = request.AuthorizationToken,
-                        Orderid = request.OrderId.ToString(),
-                        Orderreference = request.OrderReference,
-                        //Logs = mlogs,
-                        Created = DateTime.UtcNow,
-                        Linnrequest = Newtonsoft.Json.JsonConvert.SerializeObject(request),
-                        Linnresponse = Newtonsoft.Json.JsonConvert.SerializeObject(response),
-                        DHLrequest = postData,
-                        DHLresponse = pdfresp.Labelurlbyts,
-                        Iserror = pdfresp.IsError,
-                        Error = pdfresp.Error,
-                        Labelid = pdfresp.Labelid
-                    };
-                    _generateLabelRepository.Insert(generatelabelLog);
-                    _unitOfWork.Commit();
-                    
-                    foreach (var log in mlogs)
-                    {
-                        var l = new LabelLogs();
-                        l.Id = Guid.NewGuid();
-                        l.GenerateLabelId = generatelabelLog.Id;
-                        l.Log = log;
+                        var hhid = Guid.NewGuid();
 
-                        _labelLogsRepository.Insert(l);
+                        GeneratelabelLog generatelabelLog = new GeneratelabelLog()
+                        {
+                            Id = hhid,
+                            Token = request.AuthorizationToken,
+                            Orderid = request.OrderId.ToString(),
+                            Orderreference = request.OrderReference,
+                            //Logs = mlogs,
+                            Created = DateTime.UtcNow,
+                            Linnrequest = Newtonsoft.Json.JsonConvert.SerializeObject(request),
+                            Linnresponse = Newtonsoft.Json.JsonConvert.SerializeObject(response),
+                            DHLrequest = postData,
+                            DHLresponse = pdfresp.Labelurlbyts,
+                            Iserror = pdfresp.IsError,
+                            Error = pdfresp.Error,
+                            Labelid = pdfresp.Labelid
+                        };
+                        _generateLabelRepository.Insert(generatelabelLog);
+                        _unitOfWork.Commit();
+
+                        foreach (var log in mlogs)
+                        {
+                            var l = new LabelLogs();
+                            l.Id = Guid.NewGuid();
+                            l.GenerateLabelId = generatelabelLog.Id;
+                            l.Log = log;
+                            _labelLogsRepository.Insert(l);
+                            _unitOfWork.Commit();
+                        }
+
+
+                        GenerateLabelCount generatelabelcount = new GenerateLabelCount()
+                        {
+                            Id = hhid,
+                            Token = request.AuthorizationToken,
+                            Orderid = request.OrderId.ToString(),
+                            Created = DateTime.UtcNow,
+                            Iserror = pdfresp.IsError,
+                            Labelid = pdfresp.Labelid,
+                            Error = pdfresp.Error
+                        };
+
+                        _generatelabelcountRepository.Insert(generatelabelcount);
                         _unitOfWork.Commit();
                     }
-
-
-                    GenerateLabelCount generatelabelcount = new GenerateLabelCount()
+                    catch (Exception)
                     {
-                        Id = hhid,
-                        Token = request.AuthorizationToken,
-                        Orderid = request.OrderId.ToString(),
-                        Created = DateTime.UtcNow,
-                        Iserror = pdfresp.IsError,
-                        Labelid = pdfresp.Labelid,
-                        Error = pdfresp.Error
-                    };
 
-                    _generatelabelcountRepository.Insert(generatelabelcount);
-                    _unitOfWork.Commit();
-
+                        throw;
+                    }
                 }
-
                 return response;
             }
             catch (Exception ex)
@@ -592,16 +600,12 @@ namespace Rishvi.Modules.Users.Services
             }
         }
 
-
-
         static byte[] imageToByteArray(System.Drawing.Image imageIn)
         {
             System.IO.MemoryStream ms = new System.IO.MemoryStream();
             imageIn.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
             return ms.ToArray();
         }
-
-
 
         public linnUser Auth(string token)
         {
@@ -633,7 +637,6 @@ namespace Rishvi.Modules.Users.Services
             }
             return null;
         }
-
 
         public string test()
         {
@@ -946,7 +949,7 @@ namespace Rishvi.Modules.Users.Services
         {
             AuthorizationConfig auth = AuthorizationConfig.Load(requestdto.AuthorizationToken);
             //var trackingnum = System.IO.File.ReadAllText(AppDomain.CurrentDomain.BaseDirectory + AppSettings.ConfigStoragePath + "\\" + AuthorizationToken + "\\" + OrderReference + "-" + "tracking" + ".json");
-            var trackingnum = AwsS3.GetS3File(requestdto.OrderReference+ "-" + "tracking" + ".json");
+            var trackingnum = AwsS3.GetS3File(requestdto.OrderReference + "-" + "tracking" + ".json");
             if (auth == null)
             {
                 return new CreateManifestResponse("Authorization failed for token " + requestdto.AuthorizationToken);
@@ -978,5 +981,106 @@ namespace Rishvi.Modules.Users.Services
             };
         }
 
+        public static void SaveJpeg(string path, System.Drawing.Image img)
+        {
+            var qualityParam = new System.Drawing.Imaging.EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 100L);
+            var jpegCodec = GetEncoderInfo("image/jpeg");
+
+            var encoderParams = new EncoderParameters(1);
+            encoderParams.Param[0] = qualityParam;
+            img.Save(path, jpegCodec, encoderParams);
+        }
+        public static void Save(string path, System.Drawing.Image img, ImageCodecInfo imageCodecInfo)
+        {
+            var qualityParam = new System.Drawing.Imaging.EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 100L);
+
+            var encoderParams = new EncoderParameters(1);
+            encoderParams.Param[0] = qualityParam;
+            img.Save(path, imageCodecInfo, encoderParams);
+        }
+        public static ImageCodecInfo GetEncoderInfo(string mimeType)
+        {
+            return ImageCodecInfo.GetImageEncoders().FirstOrDefault(t => t.MimeType == mimeType);
+        }
+        public static System.Drawing.Image PutOnCanvas(System.Drawing.Image image, int width, int height, Color canvasColor)
+        {
+            var res = new Bitmap(width, height);
+            using (var g = Graphics.FromImage(res))
+            {
+                g.Clear(canvasColor);
+                var x = (width - image.Width) / 2;
+                var y = (height - image.Height) / 2;
+                g.DrawImageUnscaled(image, x, y, image.Width, image.Height);
+            }
+
+            return res;
+        }
+        public static System.Drawing.Image PutOnWhiteCanvas(System.Drawing.Image image, int width, int height)
+        {
+            return PutOnCanvas(image, width, height, Color.White);
+        }
+        public static System.Drawing.Image Resize(System.Drawing.Image image, int newWidth, int maxHeight, bool onlyResizeIfWider)
+        {
+            if (onlyResizeIfWider && image.Width <= newWidth) newWidth = image.Width;
+
+            var newHeight = image.Height * newWidth / image.Width;
+            if (newHeight > maxHeight)
+            {
+                // Resize with height instead  
+                newWidth = image.Width * maxHeight / image.Height;
+                newHeight = maxHeight;
+            }
+
+            var res = new Bitmap(newWidth, newHeight);
+
+            using (var graphic = Graphics.FromImage(res))
+            {
+                graphic.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                graphic.SmoothingMode = SmoothingMode.HighQuality;
+                graphic.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                graphic.CompositingQuality = CompositingQuality.HighQuality;
+                graphic.DrawImage(image, 0, 0, newWidth, newHeight);
+            }
+
+            return res;
+        }
+
+        public static System.Drawing.Image Crop(System.Drawing.Image img, Rectangle cropArea)
+        {
+            var bmpImage = new Bitmap(img);
+            var bmpCrop = bmpImage.Clone(cropArea, bmpImage.PixelFormat);
+            return bmpCrop;
+        }
+
+        public static System.Drawing.Image byteArrayToImage(byte[] byteArrayIn)
+        {
+            MemoryStream ms = new MemoryStream(byteArrayIn);
+            System.Drawing.Image returnImage = System.Drawing.Image.FromStream(ms);
+            return returnImage;
+        }
+
+        //The actual converting function  
+        public static string GetImage(object img)
+        {
+            return "data:image/jpg;base64," + Convert.ToBase64String((byte[])img);
+        }
+
+        public static void PerformImageResizeAndPutOnCanvas(string pFilePath, string pFileName, int pWidth, int pHeight, string pOutputFileName)
+        {
+            System.Drawing.Image imgBef;
+            imgBef = System.Drawing.Image.FromFile(pFilePath + pFileName);
+
+            System.Drawing.Image _imgR;
+            _imgR = Crop(imgBef, new Rectangle(0, 0, pWidth, pHeight));
+
+            //Save JPEG  
+            SaveJpeg(pFilePath + pOutputFileName, _imgR);
+        }
+
+        private static string BuildBasicAuthenticationString(string username, string password)
+        {
+            var byteArray = Encoding.ASCII.GetBytes(string.Format("{0}:{1}", username, password));
+            return Convert.ToBase64String(byteArray);
+        }
     }
 }
