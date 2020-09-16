@@ -175,7 +175,8 @@ namespace Rishvi.Modules.Users.Services
                 // when current stage is ContactStage lets save details specific by the user into the configuration file locally
                 if (auth.ConfigStatus == "ContactStage")
                 {
-                    auth.AccountName = request.ConfigItems.Find(s => s.ConfigItemId == "NAME").SelectedValue;
+                    auth.ContactName = request.ConfigItems.Find(s => s.ConfigItemId == "NAME").SelectedValue;
+                    auth.CompanyName = request.ConfigItems.Find(s => s.ConfigItemId == "COMPANY").SelectedValue;
                     auth.AddressLine1 = request.ConfigItems.Find(s => s.ConfigItemId == "ADDRESS1").SelectedValue;
                     auth.AddressLine2 = request.ConfigItems.Find(s => s.ConfigItemId == "ADDRESS2").SelectedValue;
                     auth.AddressLine3 = request.ConfigItems.Find(s => s.ConfigItemId == "ADDRESS3").SelectedValue;
@@ -183,6 +184,12 @@ namespace Rishvi.Modules.Users.Services
                     auth.County = request.ConfigItems.Find(s => s.ConfigItemId == "REGION").SelectedValue;
                     auth.CountryCode = request.ConfigItems.Find(s => s.ConfigItemId == "COUNTRY").SelectedValue;
                     auth.ContactPhoneNo = request.ConfigItems.Find(s => s.ConfigItemId == "TELEPHONE").SelectedValue;
+                    auth.PostCode = request.ConfigItems.Find(s => s.ConfigItemId == "POSTCODE").SelectedValue;
+                    auth.Username = request.ConfigItems.Find(s => s.ConfigItemId == "USERNAME").SelectedValue;
+                    auth.Password = request.ConfigItems.Find(s => s.ConfigItemId == "PASSWORD").SelectedValue;
+                    auth.AccountNumber = request.ConfigItems.Find(s => s.ConfigItemId == "ACCOUNTNUMBER").SelectedValue;
+                    auth.ConfigStatus = "CONFIG";
+                    auth.IsConfigActive = true;
 
                     // if user selected that the next stage should be ValuesStage, lets switch current state of the config to ValuesStage, alternativly we will route the config stage to DescriptionStage
                     if (request.ConfigItems.Find(s => s.ConfigItemId == "STAGE_SELECT").SelectedValue == "ValuesStage")
@@ -223,8 +230,20 @@ namespace Rishvi.Modules.Users.Services
                 }
                 else if (auth.ConfigStatus == "CONFIG" || auth.IsConfigActive)  // if the config is active the user can only change config properties
                 {
-                    auth.AccountName = request.ConfigItems.Find(s => s.ConfigItemId == "NAME").SelectedValue;
+                    auth.IsConfigActive = true;
+                    auth.ContactName = request.ConfigItems.Find(s => s.ConfigItemId == "NAME").SelectedValue;
+                    auth.CompanyName = request.ConfigItems.Find(s => s.ConfigItemId == "COMPANY").SelectedValue;
                     auth.AddressLine1 = request.ConfigItems.Find(s => s.ConfigItemId == "ADDRESS1").SelectedValue;
+                    auth.AddressLine2 = request.ConfigItems.Find(s => s.ConfigItemId == "ADDRESS2").SelectedValue;
+                    auth.AddressLine3 = request.ConfigItems.Find(s => s.ConfigItemId == "ADDRESS3").SelectedValue;
+                    auth.City = request.ConfigItems.Find(s => s.ConfigItemId == "CITY").SelectedValue;
+                    auth.County = request.ConfigItems.Find(s => s.ConfigItemId == "REGION").SelectedValue;
+                    auth.CountryCode = request.ConfigItems.Find(s => s.ConfigItemId == "COUNTRY").SelectedValue;
+                    auth.ContactPhoneNo = request.ConfigItems.Find(s => s.ConfigItemId == "TELEPHONE").SelectedValue;
+                    auth.PostCode = request.ConfigItems.Find(s => s.ConfigItemId == "POSTCODE").SelectedValue;
+                    auth.Username = request.ConfigItems.Find(s => s.ConfigItemId == "USERNAME").SelectedValue;
+                    auth.Password = request.ConfigItems.Find(s => s.ConfigItemId == "PASSWORD").SelectedValue;
+                    auth.AccountNumber = request.ConfigItems.Find(s => s.ConfigItemId == "ACCOUNTNUMBER").SelectedValue;
                     auth.Save();
                     return new UpdateConfigResponse();
                 }
@@ -439,7 +458,7 @@ namespace Rishvi.Modules.Users.Services
                     mlogs.Add("Customer Street Name - " + streetname);
                     mlogs.Add("Customer Street Number - " + streetnumber);
 
-                    var basictoken = AuthorizationConfig.BuildBasicAuthenticationString(AuthorizationConfig.AppUsername, AuthorizationConfig.AppPassword);
+                    var basictoken = AuthorizationConfig.BuildBasicAuthenticationString(_config.GetSection("DHLConfig").GetSection("AppUsername").Value, _config.GetSection("DHLConfig").GetSection("AppPassword").Value);
                     string path = AppDomain.CurrentDomain.BaseDirectory + "Format";
                     var otheraccount = request.ServiceConfigItems.Where(p => p.ConfigItemId == "AccountNumber").FirstOrDefault();
                     if (otheraccount != null)
@@ -647,63 +666,128 @@ namespace Rishvi.Modules.Users.Services
 
         public DHLResponse DHLgetLabel(string url, string method, string token, string body)
         {
-            test();
-
-            // Create a request using a URL that can receive a post. 
-            WebRequest request = WebRequest.Create("https://cig.dhl.de/services/sandbox/soap");
-
-            // Set the Method property of the request to POST.
-            request.Method = "POST";
-            // Create POST data and convert it to a byte array.
-            string postData = body;
-            byte[] byteArray = Encoding.UTF8.GetBytes(postData);
-            // Set the ContentType property of the WebRequest.
-            request.ContentType = "text/xml;charset=utf-8";
-            request.Headers.Add("SOAPAction", "urn:" + url);
-            request.Headers.Add("Authorization", "Basic " + token);
-            // Set the ContentLength property of the WebRequest.
-            request.ContentLength = byteArray.Length;
-
-            // Get the request stream.
-            Stream dataStream = request.GetRequestStream();
-            // Write the data to the request stream.
-            dataStream.Write(byteArray, 0, byteArray.Length);
-            // Close the Stream object.
-            dataStream.Close();
-            // Get the response.
-            WebResponse response = request.GetResponse();
-            // Get the stream containing content returned by the server.
-            dataStream = response.GetResponseStream();
-            // Open the stream using a StreamReader for easy access.
-            StreamReader reader = new StreamReader(dataStream);
-            // Read the content.
-            string responseFromServer = reader.ReadToEnd();
-            // Display the content.
-
-            // using the method 
-            string[] strlist = Regex.Split(responseFromServer, @"<labelUrl>");
-            string[] strlist2 = Regex.Split(strlist[1], @"</labelUrl>");
-            string base64String = strlist2[0];
-            WebRequest requestpdf = WebRequest.Create(base64String);
-            WebResponse responsepdf = requestpdf.GetResponse();
-            string originalFileName = Guid.NewGuid().ToString();
-            Stream streamWithFileBody = responsepdf.GetResponseStream();
-            string pathpdf = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\GenerateLabel\PDF");
-            string pathImage = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\GenerateLabel\Image");
-            using (Stream output = File.OpenWrite(pathpdf + "/" + originalFileName + ".pdf"))
+            try
             {
-                AwsS3.UploadFileToS3(output, "PDF/" + originalFileName + ".json");
-                streamWithFileBody.CopyTo(output);
+                // Create a request using a URL that can receive a post. 
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://cig.dhl.de/services/" + _config.GetSection("DHLConfig").GetSection("DHLStage").Value + "/soap");
+                // Set the Method property of the request to POST.
+                request.Method = "POST";
+                // Create POST data and convert it to a byte array.
+                string postData = body;
+                byte[] byteArray = Encoding.UTF8.GetBytes(postData.Replace("&", "&amp;"));
+                // Set the ContentType property of the WebRequest.
+                request.ContentType = "text/xml;charset=utf-8";
+                request.Headers.Add("SOAPAction", "urn:" + url);
+                request.Headers.Add("soap_version", "2");
+                request.Headers.Add("Authorization", "Basic " + token);
+                // Set the ContentLength property of the WebRequest.
+                request.ContentLength = byteArray.Length;
+                //You must change the path to point to your .cer file location. 
+                //string path = AppDomain.CurrentDomain.BaseDirectory + "Format";
+                //X509Certificate Cert = X509Certificate.CreateFromCertFile(path + "/" + "trusted_root_ca_sha256_g2.crt");
+
+                //// You must change the URL to point to your Web server.
+                //request.ClientCertificates.Add(Cert);
+                // Get the request stream.
+                Stream dataStream = request.GetRequestStream();
+                // Write the data to the request stream.
+                dataStream.Write(byteArray, 0, byteArray.Length);
+                // Close the Stream object.
+                dataStream.Close();
+                // Get the response.
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                // Get the stream containing content returned by the server.
+                dataStream = response.GetResponseStream();
+                // Open the stream using a StreamReader for easy access.
+                StreamReader reader = new StreamReader(dataStream);
+                // Read the content.
+                string responseFromServer = reader.ReadToEnd();
+                // Display the content.
+                if (responseFromServer.Contains("<statusCode>0</statusCode>"))
+                {
+                    // using the method 
+                    string[] strlist = Regex.Split(responseFromServer, @"<labelUrl>");
+                    string[] strlist2 = Regex.Split(strlist[1], @"</labelUrl>");
+                    string base64String = strlist2[0];
+                    string[] strlisttrack = Regex.Split(responseFromServer, @"<shipmentNumber>");
+                    string[] strlist2track = Regex.Split(strlisttrack[1], @"</shipmentNumber>");
+                    string trackingnum = strlist2track[0];
+                    WebRequest requestpdf = WebRequest.Create(base64String);
+                    WebResponse responsepdf = requestpdf.GetResponse();
+                    string originalFileName = Guid.NewGuid().ToString();
+                    Stream streamWithFileBody = responsepdf.GetResponseStream();
+
+                    AwsS3.UploadFileToS3(streamWithFileBody, "Files/PDF/" + originalFileName + ".pdf");
+
+                    //string pathpdf = AppDomain.CurrentDomain.BaseDirectory + AppSettings.ConfigStoragePath;
+                    //using (Stream output = File.OpenWrite(pathpdf + "/label/" + originalFileName + ".pdf"))
+                    //{
+                    //    streamWithFileBody.CopyTo(output);
+                    //}
+                    // cs_pdf_to_image.Pdf2Image.PrintQuality = 200;
+                    ImageHelper.PDFtoImage("Files/PDF/" + originalFileName + ".pdf", "Files/PDF/Images/" + originalFileName + ".png");
+                    byte[] byteImage = AwsS3.GetByteS3File("Files/PDF/Images/" + originalFileName + ".png");
+                    base64String = Convert.ToBase64String(byteImage);
+
+                    //cspdftoimage.Pdf2Image.Convert(pathpdf + "/label/" + originalFileName + ".pdf", pathpdf + "/label/" + originalFileName + ".png", 200, 200, 200);
+                    //PerformImageResizeAndPutOnCanvas(pathpdf + "/label/", originalFileName + ".png", 1096, 2088, "/" + originalFileName + "resize.png");
+                    //base64String = Convert.ToBase64String(File.ReadAllBytes(pathpdf + "/label/" + originalFileName + "resize.png"));
+                    // string base64Stringbyts = Convert.ToBase64String(File.ReadAllBytes(pathpdf + "/label/" + originalFileName + ".pdf"));
+
+                    reader.Close();
+                    dataStream.Close();
+                    response.Close();
+                    return new DHLResponse() { Labelurl = base64String, Labelid = originalFileName, Labelurlbyts = responseFromServer, TrackingNumber = trackingnum, IsError = false };
+                }
+                else
+                {
+                    string base64String = "";
+                    string[] strlist = Regex.Split(responseFromServer, @"<statusMessage>");
+                    for (var k = 1; k < strlist.Length; k++)
+                    {
+                        string[] strlist2 = Regex.Split(strlist[k], @"</statusMessage>");
+                        base64String += strlist2[0] + ",";
+                    }
+                    if (base64String == "")
+                    {
+                        string[] strlist1 = Regex.Split(responseFromServer, @"<statusText>");
+                        for (var k = 1; k < strlist1.Length; k++)
+                        {
+                            string[] strlist21 = Regex.Split(strlist1[k], @"</statusText>");
+                            base64String += strlist21[0] + ",";
+                        }
+
+                    }
+                    HttpWebRequest request2 = (HttpWebRequest)WebRequest.Create("https://translate.yandex.net/api/v1.5/tr/translate?key=" + _config.GetSection("DHLConfig").GetSection("LangKey").Value + "&text=" + base64String + "&lang=en");
+
+                    HttpWebResponse response2 = (HttpWebResponse)request2.GetResponse();
+                    // Get the stream containing content returned by the server.
+
+                    Stream dataStream2 = response2.GetResponseStream();
+                    // Open the stream using a StreamReader for easy access.
+                    StreamReader reader2 = new StreamReader(dataStream2);
+                    // Read the content.
+                    string responseFromServer2 = reader2.ReadToEnd();
+                    string[] streetnamelist = Regex.Split(responseFromServer2, "<text>");
+                    string[] streetnamelist2 = Regex.Split(streetnamelist[1], "</text>");
+                    base64String = streetnamelist2[0];
+                    return new DHLResponse() { Labelurl = null, Labelid = "", Labelurlbyts = responseFromServer, TrackingNumber = null, IsError = true, Error = base64String };
+                }
             }
+            catch (WebException e)
+            {
+                string text = "";
+                using (WebResponse response = e.Response)
+                {
+                    HttpWebResponse httpResponse = (HttpWebResponse)response;
+                    using (Stream data = response.GetResponseStream())
+                    {
+                        text = new StreamReader(data).ReadToEnd();
 
-            ImageHelper.PDFtoImage(pathpdf + "/" + originalFileName + ".pdf", pathImage + "/" + originalFileName + ".png");
-            //cs_pdf_to_image.Pdf2Image.Convert(pathpdf + "/" + originalFileName + ".pdf", pathpdf + "/" + originalFileName + ".png");
-            base64String = Convert.ToBase64String(File.ReadAllBytes(pathImage + "/" + originalFileName + ".png"));
-
-            reader.Close();
-            dataStream.Close();
-            response.Close();
-            return new DHLResponse() { PNGBase64 = base64String, Labelurl = null, Labelid = "", Labelurlbyts = responseFromServer, TrackingNumber = null, IsError = false, Error = base64String };
+                    }
+                }
+                return new DHLResponse() { Labelurl = null, TrackingNumber = null, IsError = true, Error = text };
+            }
         }
 
         public DHLResponse DHLgetManifest(string url, string method, string token, string body)
@@ -711,7 +795,7 @@ namespace Rishvi.Modules.Users.Services
             try
             {
                 // Create a request using a URL that can receive a post. 
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://cig.dhl.de/services/" + AuthorizationConfig.DHLStage + "/soap");
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://cig.dhl.de/services/" + _config.GetSection("DHLConfig").GetSection("DHLStage").Value + "/soap");
                 // Set the Method property of the request to POST.
                 request.Method = "POST";
                 // Create POST data and convert it to a byte array.
@@ -774,7 +858,7 @@ namespace Rishvi.Modules.Users.Services
 
                     }
 
-                    HttpWebRequest request2 = (HttpWebRequest)WebRequest.Create("https://translate.yandex.net/api/v1.5/tr.json/translate?key=" + AuthorizationConfig.LangKey + "&text=" + base64String + "&lang=en");
+                    HttpWebRequest request2 = (HttpWebRequest)WebRequest.Create("https://translate.yandex.net/api/v1.5/tr.json/translate?key=" + _config.GetSection("DHLConfig").GetSection("LangKey").Value + "&text=" + base64String + "&lang=en");
                     Stream dataStream2 = request2.GetRequestStream();
                     HttpWebResponse response2 = (HttpWebResponse)request2.GetResponse();
                     // Get the stream containing content returned by the server.
@@ -885,15 +969,15 @@ namespace Rishvi.Modules.Users.Services
         {
             AuthorizationConfig auth = AuthorizationConfig.Load(requestdto.AuthorizationToken);
             //var trackingnum = System.IO.File.ReadAllText(AppDomain.CurrentDomain.BaseDirectory + AppSettings.ConfigStoragePath + "\\" + AuthorizationToken + "\\" + OrderReference + "-" + "tracking" + ".json");
-            var trackingnum = AwsS3.GetS3File(requestdto.OrderReference + "-" + "tracking" + ".json");
+            var trackingnum = AwsS3.GetS3File(requestdto.AuthorizationToken + "\\" + requestdto.OrderReference + "-" + "tracking" + ".json");
             if (auth == null)
             {
                 return new CancelLabelResponse("Authorization failed for token " + requestdto.AuthorizationToken);
             }
-            var basictoken = AuthorizationConfig.BuildBasicAuthenticationString(AuthorizationConfig.AppUsername, AuthorizationConfig.AppPassword);
+            var basictoken = AuthorizationConfig.BuildBasicAuthenticationString(_config.GetSection("DHLConfig").GetSection("AppUsername").Value, _config.GetSection("DHLConfig").GetSection("AppPassword").Value);
             string postData = AwsS3.GetS3File("Format/Caclelabel.txt").Replace("{{user}}", auth.Username)
                     .Replace("{{pass}}", auth.Password).Replace("{{shippmentnumber}}", trackingnum);
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://cig.dhl.de/services/" + AuthorizationConfig.DHLStage + "/soap");
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://cig.dhl.de/services/" + _config.GetSection("DHLConfig").GetSection("DHLStage").Value + "/soap");
             // Set the Method property of the request to POST.
             request.Method = "POST";
 

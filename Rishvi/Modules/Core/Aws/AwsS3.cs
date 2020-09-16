@@ -160,6 +160,33 @@ namespace Spinx.Web.Modules.Core.Aws
             return string.Empty;
         }
 
+        public static byte[] GetByteS3File(string fileKey)
+        {
+            byte[] jsonString = null;
+            using (IAmazonS3 client = AwsAuthentication())
+            {
+                GetObjectRequest request = new GetObjectRequest();
+                request.BucketName = AwsBuketName;
+                request.Key = AwsFolderName + "/" + fileKey;
+                try
+                {
+                    Task<GetObjectResponse> response = client.GetObjectAsync(request);
+                    using (Stream responseStream = response.Result.ResponseStream)
+                    { 
+                        jsonString = ReadFully(responseStream);
+                    }
+                    return jsonString;
+                }
+                catch (Amazon.S3.AmazonS3Exception ex)
+                {
+                    //if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    //    return false;
+                    //status wasn't not found, so throw the exception
+                    //throw;
+                }
+            }
+            return jsonString;
+        }
         public static bool CopyFileFormFolder(string sourceKey, string destinationKey)
         {
             try
@@ -192,6 +219,20 @@ namespace Spinx.Web.Modules.Core.Aws
                 return false;
             }
             return false;
+        }
+
+        public static byte[] ReadFully(Stream input)
+        {
+            byte[] buffer = new byte[16 * 1024];
+            using (MemoryStream ms = new MemoryStream())
+            {
+                int read;
+                while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    ms.Write(buffer, 0, read);
+                }
+                return ms.ToArray();
+            }
         }
     }
 }
