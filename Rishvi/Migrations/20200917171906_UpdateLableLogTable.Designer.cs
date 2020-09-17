@@ -3,15 +3,17 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Rishvi.Modules.Core.Data;
 
 namespace Rishvi.Migrations
 {
     [DbContext(typeof(RishviDbContext))]
-    partial class RishviDbContextModelSnapshot : ModelSnapshot
+    [Migration("20200917171906_UpdateLableLogTable")]
+    partial class UpdateLableLogTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -11,8 +11,6 @@ namespace Rishvi.Modules.LabelLog.Linn.Configurations
         {
             builder.Property(t => t.Id)
                 .HasDefaultValueSql("NEWID()");
-
-            builder.HasKey(t => new { t.GenerateLabelId });
         }
     }
 }

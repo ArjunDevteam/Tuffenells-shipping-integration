@@ -192,42 +192,42 @@ namespace Rishvi.Modules.Users.Services
                     auth.IsConfigActive = true;
 
                     // if user selected that the next stage should be ValuesStage, lets switch current state of the config to ValuesStage, alternativly we will route the config stage to DescriptionStage
-                    if (request.ConfigItems.Find(s => s.ConfigItemId == "STAGE_SELECT").SelectedValue == "ValuesStage")
-                    {
-                        auth.ConfigStatus = "ValuesStage";
-                    }
-                    else
-                    {
-                        auth.ConfigStatus = "DescriptionStage";
-                    }
+                    //if (request.ConfigItems.Find(s => s.ConfigItemId == "STAGE_SELECT").SelectedValue == "ValuesStage")
+                    //{
+                    //    auth.ConfigStatus = "ValuesStage";
+                    //}
+                    //else
+                    //{
+                    //    auth.ConfigStatus = "DescriptionStage";
+                    //}
                     auth.Save();
                     return new UpdateConfigResponse();
                 }
-                else if (auth.ConfigStatus == "ValuesStage")
-                {
-                    int intValue = 0;
-                    if (int.TryParse(request.ConfigItems.Find(s => s.ConfigItemId == "INTVALUE").SelectedValue, out intValue))
-                    {
-                        if (intValue < 10)
-                        {
-                            return new UpdateConfigResponse("Some Int Value must be greater than 10. This is just some validation on the integration side;");
-                        }
-                    }
-                    else
-                    {
-                        return new UpdateConfigResponse("Some Int Value is not an int. WTF? ");
-                    }
-                    auth.ConfigStatus = "DescriptionStage";
-                    auth.Save();
-                    return new UpdateConfigResponse();
-                }
-                else if (auth.ConfigStatus == "DescriptionStage")   // ON THE Final step we need to activate the config and set the status to CONFIG
-                {
-                    auth.IsConfigActive = true;
-                    auth.ConfigStatus = "CONFIG";
-                    auth.Save();
-                    return new UpdateConfigResponse();
-                }
+                //else if (auth.ConfigStatus == "ValuesStage")
+                //{
+                //    int intValue = 0;
+                //    if (int.TryParse(request.ConfigItems.Find(s => s.ConfigItemId == "INTVALUE").SelectedValue, out intValue))
+                //    {
+                //        if (intValue < 10)
+                //        {
+                //            return new UpdateConfigResponse("Some Int Value must be greater than 10. This is just some validation on the integration side;");
+                //        }
+                //    }
+                //    else
+                //    {
+                //        return new UpdateConfigResponse("Some Int Value is not an int. WTF? ");
+                //    }
+                //    auth.ConfigStatus = "DescriptionStage";
+                //    auth.Save();
+                //    return new UpdateConfigResponse();
+                //}
+                //else if (auth.ConfigStatus == "DescriptionStage")   // ON THE Final step we need to activate the config and set the status to CONFIG
+                //{
+                //    auth.IsConfigActive = true;
+                //    auth.ConfigStatus = "CONFIG";
+                //    auth.Save();
+                //    return new UpdateConfigResponse();
+                //}
                 else if (auth.ConfigStatus == "CONFIG" || auth.IsConfigActive)  // if the config is active the user can only change config properties
                 {
                     auth.IsConfigActive = true;
@@ -292,17 +292,17 @@ namespace Rishvi.Modules.Users.Services
             return new Models.ExtendedPropertyMappingResponse()
             {
                 Items = new List<ExtendedPropertyMapping>() {
-                    new Models.ExtendedPropertyMapping() {
-                        PropertyName ="SafePlace1",
-                        PropertyTitle="Safe Place note",
+                    new ExtendedPropertyMapping() {
+                        PropertyName ="StreetName",
+                        PropertyTitle="Street Name",
                         PropertyType = "ORDER",
-                        PropertyDescription = "Safe place note for delivery"
+                        PropertyDescription = "Street Name for delivery"
                     },
-                    new Models.ExtendedPropertyMapping() {
-                        PropertyName ="ExtendedCover",
-                        PropertyTitle="Extended Cover flag",
-                        PropertyType = "ITEM",
-                        PropertyDescription = "Identifies whether the item requires Extended Cover. Set to 1 if required."
+                    new ExtendedPropertyMapping() {
+                        PropertyName ="StreetNumber",
+                        PropertyTitle="Street Number",
+                        PropertyType = "ORDER",
+                        PropertyDescription = "Street Number for delivery"
                     }
                 }
             };
@@ -459,7 +459,7 @@ namespace Rishvi.Modules.Users.Services
                     mlogs.Add("Customer Street Number - " + streetnumber);
 
                     var basictoken = AuthorizationConfig.BuildBasicAuthenticationString(_config.GetSection("DHLConfig").GetSection("AppUsername").Value, _config.GetSection("DHLConfig").GetSection("AppPassword").Value);
-                    string path = AppDomain.CurrentDomain.BaseDirectory + "Format";
+                    //string path = AppDomain.CurrentDomain.BaseDirectory + "Format";
                     var otheraccount = request.ServiceConfigItems.Where(p => p.ConfigItemId == "AccountNumber").FirstOrDefault();
                     if (otheraccount != null)
                     {
@@ -501,7 +501,7 @@ namespace Rishvi.Modules.Users.Services
                         mlogs.Add("Service Packstartion Post Number - " + compna);
                     }
                     // string path = Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\Files\Format");
-                    string postData = AwsS3.GetS3File(path + "/" + packpath + serviceCode + ".txt")
+                    string postData = AwsS3.GetS3File("Files/Format/" + packpath + serviceCode + ".txt")
                         .Replace("{{user}}", auth.Username)
                 .Replace("{{pass}}", auth.Password)
                 .Replace("{{product}}", serviceCode)
@@ -605,7 +605,7 @@ namespace Rishvi.Modules.Users.Services
                         _generatelabelcountRepository.Insert(generatelabelcount);
                         _unitOfWork.Commit();
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
 
                         throw;

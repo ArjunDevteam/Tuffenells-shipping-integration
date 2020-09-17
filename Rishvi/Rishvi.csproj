@@ -27,6 +27,8 @@
     <Compile Include="Migrations\20200911131439_generate-label.Designer.cs" />
     <Compile Include="Migrations\20200912081329_labelcount_childlog.cs" />
     <Compile Include="Migrations\20200912081329_labelcount_childlog.Designer.cs" />
+    <Compile Include="Migrations\20200917171906_UpdateLableLogTable.cs" />
+    <Compile Include="Migrations\20200917171906_UpdateLableLogTable.Designer.cs" />
     <Compile Include="Migrations\RishviDbContextModelSnapshot.cs" />
   </ItemGroup>
   <ItemGroup>

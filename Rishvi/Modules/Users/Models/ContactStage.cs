@@ -28,11 +28,22 @@ namespace Rishvi.Modules.Users.Models
                                 ValueType = ConfigValueType.STRING
                             },
                             new ConfigItem() {
-                                ConfigItemId = "ADDRESS1",
-                                Description="Address line 1",
+                                ConfigItemId = "COMPANY",
+                                Description="Company name",
                                 GroupName="Sender Address",
                                 MustBeSpecified = true,
-                                Name="Address 1",
+                                Name="Company Name",
+                                ReadOnly= false,
+                                SelectedValue="",
+                                SortOrder=1,
+                                ValueType = ConfigValueType.STRING
+                            },
+                            new ConfigItem() {
+                                ConfigItemId = "ADDRESS1",
+                                Description="Street Name",
+                                GroupName="Sender Address",
+                                MustBeSpecified = true,
+                                Name="Street Name",
                                 ReadOnly= false,
                                 SelectedValue="",
                                 SortOrder=3,
@@ -40,10 +51,10 @@ namespace Rishvi.Modules.Users.Models
                             },
                             new ConfigItem() {
                                 ConfigItemId = "ADDRESS2",
-                                Description="Address line 2",
+                                Description="Street Number",
                                 GroupName="Sender Address",
                                 MustBeSpecified = false,
-                                Name="Address 2",
+                                Name="Street Number",
                                 ReadOnly= false,
                                 SelectedValue="",
                                 SortOrder=3,
@@ -112,38 +123,60 @@ namespace Rishvi.Modules.Users.Models
                                     }
                                 }
                             },
-                            new ConfigItem() {
+                             new ConfigItem() {
                                 ConfigItemId = "TELEPHONE",
-                                Description="Contact telephone number",
+                                Description="Telephone",
                                 GroupName="Sender Address",
                                 MustBeSpecified = true,
-                                Name="Contact Telephone",
+                                Name="Telephone",
                                 ReadOnly= false,
                                 SelectedValue="",
                                 SortOrder=8,
                                 ValueType = ConfigValueType.STRING
                             },
                             new ConfigItem() {
-                                ConfigItemId = "STAGE_SELECT",
-                                Description="Which stage do you want to select next",
-                                GroupName="Next Config Stage",
+                                ConfigItemId = "POSTCODE",
+                                Description="Postal Code",
+                                GroupName="Sender Address",
                                 MustBeSpecified = true,
-                                Name="Next Stage",
+                                Name="Postal Code",
                                 ReadOnly= false,
-                                SelectedValue="ValuesStage",
+                                SelectedValue="",
+                                SortOrder=8,
+                                ValueType = ConfigValueType.STRING
+                            },
+                            new ConfigItem() {
+                                ConfigItemId = "USERNAME",
+                                Description="DHL Username",
+                                GroupName="Sender Address",
+                                MustBeSpecified = true,
+                                Name="DHL Username",
+                                ReadOnly= false,
+                                SelectedValue="",
                                 SortOrder=9,
-                                ValueType = ConfigValueType.LIST,
-                                ListValues = new List<ConfigItemListItem>()
-                                {
-                                    new ConfigItemListItem() {
-                                        Display = "Go to Value stage",
-                                        Value = "ValuesStage"
-                                    },
-                                    new ConfigItemListItem() {
-                                        Display = "Go to Description stage",
-                                        Value = "DescriptionStage"
-                                    }
-                                }
+                                ValueType = ConfigValueType.STRING
+                            },
+                            new ConfigItem() {
+                                ConfigItemId = "PASSWORD",
+                                Description="DHL password",
+                                GroupName="Sender Address",
+                                MustBeSpecified = true,
+                                Name="DHL Password",
+                                ReadOnly= false,
+                                SelectedValue="",
+                                SortOrder=10,
+                                ValueType = ConfigValueType.PASSWORD
+                            },
+                             new ConfigItem() {
+                                ConfigItemId = "ACCOUNTNUMBER",
+                                Description="DHL Account Number",
+                                GroupName="Sender Address",
+                                MustBeSpecified = true,
+                                Name="DHL Account Number",
+                                ReadOnly= false,
+                                SelectedValue="",
+                                SortOrder=11,
+                                ValueType = ConfigValueType.STRING
                             }
                     }
                 };
